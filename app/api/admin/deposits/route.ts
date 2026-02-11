@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         currency,
         recipient: recipient || null,
         iban: iban || null,
-        status: status as 'PENDING' | 'COMPLETED' | 'REJECTED',
+        status: status as 'PENDING' | 'APPROVED' | 'REJECTED',
         createdAt: transactionDate,
       }
     });
