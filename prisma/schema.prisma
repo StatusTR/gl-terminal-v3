@@ -1,0 +1,125 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TransferType {
+  FIAT
+  CRYPTO
+}
+
+enum TransferStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TradeStatus {
+  ACTIVE
+  CLOSED_BY_USER
+  CLOSED_BY_ADMIN
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  password     String
+  name         String?
+  role         Role          @default(USER)
+  bankName     String?
+  iban         String?
+  walletAddress String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  balances     Balance[]
+  portfolio    Portfolio[]
+  transactions Transaction[]
+  transfers    Transfer[]
+  trades       Trade[]
+}
+
+model Balance {
+  id        String   @id @default(cuid())
+  userId    String
+  currency  String
+  amount    Float    @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, currency])
+}
+
+model Portfolio {
+  id        String   @id @default(cuid())
+  userId    String
+  assetId   String
+  assetName String
+  assetType String
+  quantity  Float    @default(0)
+  avgPrice  Float    @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, assetId])
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  assetId   String
+  assetName String
+  quantity  Float
+  price     Float
+  total     Float
+  currency  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Transfer {
+  id             String         @id @default(cuid())
+  userId         String
+  type           TransferType
+  currency       String
+  amount         Float
+  recipientName  String?
+  recipientBank  String?
+  iban           String?
+  cryptoAddress  String?
+  reference      String?
+  status         TransferStatus @default(PENDING)
+  adminComment   String?
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model Trade {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Float
+  currency      String
+  status        TradeStatus @default(ACTIVE)
+  profit        Float?
+  profitPercent Float?
+  tradingPair   String?
+  adminComment  String?
+  createdAt     DateTime    @default(now())
+  closedAt      DateTime?
+
+  @@index([userId])
+  @@index([status])
+}
