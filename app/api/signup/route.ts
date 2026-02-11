@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
@@ -51,7 +50,7 @@ export async function POST(req: Request) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Use transaction to ensure user and balances are created atomically
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
           email,

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // PATCH - Admin closes a trade with profit
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -27,7 +27,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Nur für Administratoren' }, { status: 403 });
     }
 
-    const { id } = await params;
+    const { id } = params;
     const { profit, tradingPair, adminComment } = await request.json();
 
     // Find the trade

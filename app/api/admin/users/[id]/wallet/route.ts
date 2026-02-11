@@ -27,12 +27,12 @@ export async function PATCH(
       );
     }
 
+    const { id } = params;
     const body = await request.json();
     const { walletAddress } = body;
 
-    // Перевірка чи користувач існує
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!user) {
@@ -42,9 +42,8 @@ export async function PATCH(
       );
     }
 
-    // Оновлення wallet address
     const updatedUser = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: { walletAddress: walletAddress || null },
       select: {
         id: true,

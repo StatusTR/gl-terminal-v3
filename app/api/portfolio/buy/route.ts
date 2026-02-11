@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
-import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +34,7 @@ export async function POST(req: Request) {
     console.log('[BUY] Total amount:', totalAmount);
 
     // Execute all operations in a transaction to ensure atomicity
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Check if user has enough balance
       const balance = await tx.balance.findUnique({
         where: {
