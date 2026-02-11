@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       type,
       amount, 
       currency,
-      recipient,
+      recipientName,
       iban,
       status,
       createdAt
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         type: type as 'FIAT' | 'CRYPTO',
         amount: parseFloat(amount),
         currency,
-        recipient: recipient || null,
+        recipientName: recipientName || null,
         iban: iban || null,
         status: status as 'PENDING' | 'APPROVED' | 'REJECTED',
         createdAt: transactionDate,

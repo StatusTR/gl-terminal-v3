@@ -465,7 +465,7 @@ export default function AdminClient() {
           type: depositType,
           amount: depositAmount,
           currency: depositCurrency,
-          recipient: depositRecipient || null,
+          recipientName: depositRecipient || null,
           iban: depositIban || null,
           status: depositStatus,
           createdAt: depositDate || null,
