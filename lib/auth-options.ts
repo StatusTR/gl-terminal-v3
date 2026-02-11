@@ -16,56 +16,75 @@ export const authOptions: NextAuthOptions = {
         adminImpersonate: { label: 'Admin Impersonate', type: 'text' },
       },
       async authorize(credentials) {
+        console.log('[AUTH] Starting authorization...');
+        console.log('[AUTH] Email:', credentials?.email);
+        
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email та пароль обов\'язкові');
+          console.log('[AUTH] Missing credentials');
+          throw new Error('Email und Passwort erforderlich');
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        try {
+          console.log('[AUTH] Looking up user in database...');
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+          });
 
-        if (!user) {
-          throw new Error('Невірний email або пароль');
-        }
+          console.log('[AUTH] User found:', user ? 'yes' : 'no');
 
-        // Check if this is an admin impersonation request
-        if (credentials.adminImpersonate === 'true') {
-          try {
-            // Verify the admin token
-            const decoded = jwt.verify(
-              credentials.password,
-              process.env.NEXTAUTH_SECRET || 'secret'
-            ) as { userId: string; email: string; impersonatedBy: string };
-
-            // Verify the token is for this user
-            if (decoded.email === credentials.email && decoded.impersonatedBy) {
-              return {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                role: user.role,
-              };
-            }
-          } catch {
-            throw new Error('Ungültiger Admin-Token');
+          if (!user) {
+            console.log('[AUTH] User not found');
+            throw new Error('Falsche E-Mail oder Passwort');
           }
+
+          // Check if this is an admin impersonation request
+          if (credentials.adminImpersonate === 'true') {
+            console.log('[AUTH] Admin impersonation request');
+            try {
+              const decoded = jwt.verify(
+                credentials.password,
+                process.env.NEXTAUTH_SECRET || 'secret'
+              ) as { userId: string; email: string; impersonatedBy: string };
+
+              if (decoded.email === credentials.email && decoded.impersonatedBy) {
+                console.log('[AUTH] Impersonation successful');
+                return {
+                  id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  role: user.role,
+                };
+              }
+            } catch (e) {
+              console.log('[AUTH] Impersonation token invalid:', e);
+              throw new Error('Ungültiger Admin-Token');
+            }
+          }
+
+          console.log('[AUTH] Comparing passwords...');
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            user.password
+          );
+
+          console.log('[AUTH] Password valid:', isPasswordValid);
+
+          if (!isPasswordValid) {
+            console.log('[AUTH] Invalid password');
+            throw new Error('Falsche E-Mail oder Passwort');
+          }
+
+          console.log('[AUTH] Login successful for:', user.email);
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          };
+        } catch (error) {
+          console.error('[AUTH] Error during authorization:', error);
+          throw error;
         }
-
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-
-        if (!isPasswordValid) {
-          throw new Error('Невірний email або пароль');
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
       },
     }),
   ],
@@ -91,4 +110,5 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  debug: process.env.NODE_ENV === 'development',
 };
