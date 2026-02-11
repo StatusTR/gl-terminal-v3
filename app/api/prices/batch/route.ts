@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { CRYPTOCURRENCIES, GERMAN_STOCKS, getAssetBySymbol } from '@/lib/assets';
 
