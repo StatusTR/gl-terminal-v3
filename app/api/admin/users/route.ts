@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         paymentPurpose: true,
         bic: true,
         bankAddress: true,
+        walletAddress: true,
         createdAt: true,
         balances: {
           select: {
