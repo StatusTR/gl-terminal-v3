@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // PATCH - User closes their own trade (gets back original amount only)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -27,7 +27,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Benutzer nicht gefunden' }, { status: 404 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find the trade
     const trade = await prisma.trade.findUnique({
