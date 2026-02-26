@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { ArrowLeft, User, Lock, Building2, AlertCircle, Wallet, CheckCircle } from 'lucide-react';
+import { ArrowLeft, User, Lock, Building2, AlertCircle, Wallet, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -36,6 +36,9 @@ export default function ProfileClient() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Wallet state
   const [walletInput, setWalletInput] = useState('');
@@ -339,33 +342,63 @@ export default function ProfileClient() {
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="currentPassword">Aktuelles Passwort</Label>
-                  <Input
-                    id="currentPassword"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Aktuelles Passwort eingeben"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="currentPassword"
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Aktuelles Passwort eingeben"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="newPassword">Neues Passwort</Label>
-                  <Input
-                    id="newPassword"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Neues Passwort eingeben (mindestens 6 Zeichen)"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="newPassword"
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Neues Passwort eingeben (mindestens 6 Zeichen)"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Neues Passwort bestätigen</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Neues Passwort bestätigen"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Neues Passwort bestätigen"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <Button type="submit" disabled={changingPassword} className="bg-amber-500 hover:bg-amber-600 text-black">
                   {changingPassword ? 'Passwort ändern...' : 'Passwort ändern'}
