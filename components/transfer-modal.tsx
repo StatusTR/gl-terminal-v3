@@ -42,30 +42,65 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
   const [balances, setBalances] = useState<Balance[]>([]);
   const [hasActiveTrade, setHasActiveTrade] = useState(false);
 
-  // Fetch balances and check for active trade when switching to trade tab
+  // Fetch balances on mount for all tabs
+  useEffect(() => {
+    const fetchBalances = async () => {
+      try {
+        const res = await fetch('/api/balances');
+        const data = await res.json();
+        if (res.ok) setBalances(data.balances || []);
+      } catch (error) {
+        console.error('Error fetching balances:', error);
+      }
+    };
+    fetchBalances();
+  }, []);
+
+  // Check for active trade when switching to trade tab
   useEffect(() => {
     if (transferType === 'TRADE') {
-      const fetchData = async () => {
+      const fetchTrades = async () => {
         try {
-          const [balRes, tradesRes] = await Promise.all([
-            fetch('/api/balances'),
-            fetch('/api/trades')
-          ]);
-          const balData = await balRes.json();
-          const tradesData = await tradesRes.json();
-          
-          if (balRes.ok) setBalances(balData.balances || []);
-          if (tradesRes.ok) {
-            const activeTrade = (tradesData.trades || []).find((t: any) => t.status === 'ACTIVE');
+          const res = await fetch('/api/trades');
+          const data = await res.json();
+          if (res.ok) {
+            const activeTrade = (data.trades || []).find((t: any) => t.status === 'ACTIVE');
             setHasActiveTrade(!!activeTrade);
           }
         } catch (error) {
-          console.error('Error fetching data:', error);
+          console.error('Error fetching trades:', error);
         }
       };
-      fetchData();
+      fetchTrades();
     }
   }, [transferType]);
+
+  // Max button handlers
+  const handleFiatMax = () => {
+    const balance = balances.find(b => b.currency === fiatCurrency);
+    if (balance && balance.amount > 0) {
+      setFiatAmount(balance.amount.toFixed(2));
+    }
+  };
+
+  const handleCryptoMax = () => {
+    const balance = balances.find(b => b.currency === cryptoCurrency);
+    if (balance && balance.amount > 0) {
+      setCryptoAmount(balance.amount.toFixed(8));
+    }
+  };
+
+  const handleTradeMax = () => {
+    const balance = balances.find(b => b.currency === tradeCurrency);
+    if (balance && balance.amount > 0) {
+      setTradeAmount(balance.amount.toFixed(2));
+    }
+  };
+
+  // Get current balance for display
+  const getFiatBalance = () => balances.find(b => b.currency === fiatCurrency)?.amount || 0;
+  const getCryptoBalance = () => balances.find(b => b.currency === cryptoCurrency)?.amount || 0;
+  const getTradeBalance = () => balances.find(b => b.currency === tradeCurrency)?.amount || 0;
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -216,17 +251,34 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="fiat-amount" className="text-sm">Betrag</Label>
-              <Input
-                id="fiat-amount"
-                type="number"
-                step="0.01"
-                value={fiatAmount}
-                onChange={(e) => setFiatAmount(e.target.value)}
-                placeholder="0.00"
-                disabled={loading}
-                className="h-9 sm:h-10 text-sm"
-              />
+              <div className="flex justify-between items-center">
+                <Label htmlFor="fiat-amount" className="text-sm">Betrag</Label>
+                <span className="text-xs text-gray-500">
+                  Verfügbar: {getFiatBalance().toFixed(2)} {fiatCurrency}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="fiat-amount"
+                  type="number"
+                  step="0.01"
+                  value={fiatAmount}
+                  onChange={(e) => setFiatAmount(e.target.value)}
+                  placeholder="0.00"
+                  disabled={loading}
+                  className="h-9 sm:h-10 text-sm flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFiatMax}
+                  disabled={loading || getFiatBalance() <= 0}
+                  className="h-9 sm:h-10 px-3 text-xs font-semibold bg-gray-100 hover:bg-gray-200"
+                >
+                  Max
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -273,17 +325,34 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="crypto-amount" className="text-sm">Betrag</Label>
-              <Input
-                id="crypto-amount"
-                type="number"
-                step="0.00000001"
-                value={cryptoAmount}
-                onChange={(e) => setCryptoAmount(e.target.value)}
-                placeholder="0.00000000"
-                disabled={loading}
-                className="h-9 sm:h-10 text-sm"
-              />
+              <div className="flex justify-between items-center">
+                <Label htmlFor="crypto-amount" className="text-sm">Betrag</Label>
+                <span className="text-xs text-gray-500">
+                  Verfügbar: {getCryptoBalance().toFixed(8)} {cryptoCurrency}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="crypto-amount"
+                  type="number"
+                  step="0.00000001"
+                  value={cryptoAmount}
+                  onChange={(e) => setCryptoAmount(e.target.value)}
+                  placeholder="0.00000000"
+                  disabled={loading}
+                  className="h-9 sm:h-10 text-sm flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCryptoMax}
+                  disabled={loading || getCryptoBalance() <= 0}
+                  className="h-9 sm:h-10 px-3 text-xs font-semibold bg-gray-100 hover:bg-gray-200"
+                >
+                  Max
+                </Button>
+              </div>
             </div>
           </TabsContent>
 
@@ -337,17 +406,34 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="trade-amount" className="text-sm">Betrag</Label>
-                  <Input
-                    id="trade-amount"
-                    type="number"
-                    step="0.01"
-                    value={tradeAmount}
-                    onChange={(e) => setTradeAmount(e.target.value)}
-                    placeholder="0.00"
-                    disabled={loading}
-                    className="h-9 sm:h-10 text-sm"
-                  />
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="trade-amount" className="text-sm">Betrag</Label>
+                    <span className="text-xs text-gray-500">
+                      Verfügbar: {getTradeBalance().toFixed(2)} {tradeCurrency}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      id="trade-amount"
+                      type="number"
+                      step="0.01"
+                      value={tradeAmount}
+                      onChange={(e) => setTradeAmount(e.target.value)}
+                      placeholder="0.00"
+                      disabled={loading}
+                      className="h-9 sm:h-10 text-sm flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTradeMax}
+                      disabled={loading || getTradeBalance() <= 0}
+                      className="h-9 sm:h-10 px-3 text-xs font-semibold bg-gray-100 hover:bg-gray-200"
+                    >
+                      Max
+                    </Button>
+                  </div>
                 </div>
               </>
             )}

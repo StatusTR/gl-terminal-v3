@@ -328,17 +328,44 @@ export default function TradeModal({ mode, onClose, onSuccess, initialSymbol }: 
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="quantity">Menge</Label>
-              <Input
-                id="quantity"
-                type="number"
-                step="0.001"
-                min="0.001"
-                placeholder="0.00"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                required
-              />
+              <div className="flex justify-between items-center">
+                <Label htmlFor="quantity">Menge</Label>
+                {mode === 'sell' && symbol && (
+                  <span className="text-xs text-gray-500">
+                    Verfügbar: {portfolio.find(p => p.symbol === symbol)?.quantity?.toFixed(4) || '0'}
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="quantity"
+                  type="number"
+                  step="0.001"
+                  min="0.001"
+                  placeholder="0.00"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  required
+                  className="flex-1"
+                />
+                {mode === 'sell' && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const item = portfolio.find(p => p.symbol === symbol);
+                      if (item && item.quantity > 0) {
+                        setQuantity(item.quantity.toString());
+                      }
+                    }}
+                    disabled={!symbol || !portfolio.find(p => p.symbol === symbol)?.quantity}
+                    className="h-10 px-3 text-xs font-semibold bg-gray-100 hover:bg-gray-200"
+                  >
+                    Max
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
