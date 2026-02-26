@@ -40,6 +40,7 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
   const [tradeCurrency, setTradeCurrency] = useState('EUR');
   const [tradeAmount, setTradeAmount] = useState('');
   const [balances, setBalances] = useState<Balance[]>([]);
+  const [balancesLoaded, setBalancesLoaded] = useState(false);
   const [hasActiveTrade, setHasActiveTrade] = useState(false);
 
   // Fetch balances on mount for all tabs
@@ -51,6 +52,8 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
         if (res.ok) setBalances(data.balances || []);
       } catch (error) {
         console.error('Error fetching balances:', error);
+      } finally {
+        setBalancesLoaded(true);
       }
     };
     fetchBalances();
@@ -101,6 +104,12 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
   const getFiatBalance = () => balances.find(b => b.currency === fiatCurrency)?.amount || 0;
   const getCryptoBalance = () => balances.find(b => b.currency === cryptoCurrency)?.amount || 0;
   const getTradeBalance = () => balances.find(b => b.currency === tradeCurrency)?.amount || 0;
+
+  // Format balance display with loading state
+  const formatBalanceDisplay = (amount: number, currency: string, isCrypto: boolean = false) => {
+    if (!balancesLoaded) return 'Laden...';
+    return `${isCrypto ? amount.toFixed(8) : amount.toFixed(2)} ${currency}`;
+  };
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -254,7 +263,7 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
               <div className="flex justify-between items-center">
                 <Label htmlFor="fiat-amount" className="text-sm">Betrag</Label>
                 <span className="text-xs text-gray-500">
-                  Verfügbar: {getFiatBalance().toFixed(2)} {fiatCurrency}
+                  Verfügbar: {formatBalanceDisplay(getFiatBalance(), fiatCurrency)}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -273,7 +282,7 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleFiatMax}
-                  disabled={loading || getFiatBalance() <= 0}
+                  disabled={loading || !balancesLoaded || getFiatBalance() <= 0}
                   className="h-9 sm:h-10 px-3 text-xs font-semibold bg-gray-100 hover:bg-gray-200"
                 >
                   Max
@@ -328,7 +337,7 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
               <div className="flex justify-between items-center">
                 <Label htmlFor="crypto-amount" className="text-sm">Betrag</Label>
                 <span className="text-xs text-gray-500">
-                  Verfügbar: {getCryptoBalance().toFixed(8)} {cryptoCurrency}
+                  Verfügbar: {formatBalanceDisplay(getCryptoBalance(), cryptoCurrency, true)}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -347,7 +356,7 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleCryptoMax}
-                  disabled={loading || getCryptoBalance() <= 0}
+                  disabled={loading || !balancesLoaded || getCryptoBalance() <= 0}
                   className="h-9 sm:h-10 px-3 text-xs font-semibold bg-gray-100 hover:bg-gray-200"
                 >
                   Max
@@ -409,7 +418,7 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
                   <div className="flex justify-between items-center">
                     <Label htmlFor="trade-amount" className="text-sm">Betrag</Label>
                     <span className="text-xs text-gray-500">
-                      Verfügbar: {getTradeBalance().toFixed(2)} {tradeCurrency}
+                      Verfügbar: {formatBalanceDisplay(getTradeBalance(), tradeCurrency)}
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -428,7 +437,7 @@ function TransferModal({ onClose, onSuccess }: TransferModalProps) {
                       variant="outline"
                       size="sm"
                       onClick={handleTradeMax}
-                      disabled={loading || getTradeBalance() <= 0}
+                      disabled={loading || !balancesLoaded || getTradeBalance() <= 0}
                       className="h-9 sm:h-10 px-3 text-xs font-semibold bg-gray-100 hover:bg-gray-200"
                     >
                       Max
