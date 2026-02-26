@@ -9,13 +9,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { ArrowLeft, Search, Users, Send, TrendingUp, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Search, Users, Send, TrendingUp, CheckCircle, XCircle, Shield, Crown } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import AdminTransfers from '@/components/admin-transfers';
 import UsersTable from '@/components/admin/users-table';
 import Pagination from '@/components/admin/pagination';
+import AdminsManagement from '@/components/admin/admins-management';
+import { getAdminIcon } from '@/lib/admin-icons';
 
 interface Balance {
   currency: string;
@@ -35,12 +37,25 @@ interface User {
   bic: string | null;
   bankAddress: string | null;
   walletAddress: string | null;
+  assignedAdminId: string | null;
+  assignedAdmin: {
+    id: string;
+    email: string;
+    name: string | null;
+    adminIcon: string | null;
+  } | null;
   createdAt: string;
   balances: Balance[];
   _count: {
     portfolio: number;
     transactions: number;
   };
+}
+
+interface CurrentAdmin {
+  id: string;
+  role: string;
+  isSuperAdmin: boolean;
 }
 
 interface PaginationInfo {
@@ -68,6 +83,7 @@ interface Trade {
 export default function AdminClient() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
+  const [currentAdmin, setCurrentAdmin] = useState<CurrentAdmin | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
     limit: 15,
@@ -78,6 +94,13 @@ export default function AdminClient() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
+
+  // Admin assignment state (for SUPER_ADMIN only)
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [assigningUser, setAssigningUser] = useState<User | null>(null);
+  const [selectedAdminId, setSelectedAdminId] = useState<string>('');
+  const [adminsForAssign, setAdminsForAssign] = useState<any[]>([]);
+  const [assignLoading, setAssignLoading] = useState(false);
 
   // Balance editing state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -172,6 +195,9 @@ export default function AdminClient() {
         if (data.pagination) {
           setPagination(data.pagination);
         }
+        if (data.currentAdmin) {
+          setCurrentAdmin(data.currentAdmin);
+        }
       } else {
         toast.error(data.error || 'Ladefehler');
       }
@@ -182,9 +208,62 @@ export default function AdminClient() {
     }
   }, [pagination.page, pagination.limit, debouncedSearch]);
 
+  // Fetch admins for assignment dropdown (SUPER_ADMIN only)
+  const fetchAdminsForAssign = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/admins');
+      const data = await res.json();
+      if (res.ok) {
+        setAdminsForAssign(data.admins || []);
+      }
+    } catch {
+      console.error('Error fetching admins');
+    }
+  }, []);
+
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    if (currentAdmin?.isSuperAdmin) {
+      fetchAdminsForAssign();
+    }
+  }, [currentAdmin?.isSuperAdmin, fetchAdminsForAssign]);
+
+  // Handle assign user to admin
+  const handleOpenAssignDialog = (user: User) => {
+    setAssigningUser(user);
+    setSelectedAdminId(user.assignedAdminId || '');
+    setIsAssignDialogOpen(true);
+  };
+
+  const handleAssignUser = async () => {
+    if (!assigningUser) return;
+
+    setAssignLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${assigningUser.id}/assign`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: selectedAdminId || null })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(selectedAdminId ? 'Benutzer zugewiesen' : 'Zuweisung aufgehoben');
+        setIsAssignDialogOpen(false);
+        setAssigningUser(null);
+        fetchUsers();
+      } else {
+        toast.error(data.error || 'Fehler bei der Zuweisung');
+      }
+    } catch {
+      toast.error('Serverfehler');
+    } finally {
+      setAssignLoading(false);
+    }
+  };
 
   // Fetch trades
   const fetchTrades = useCallback(async () => {
@@ -594,7 +673,7 @@ export default function AdminClient() {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-xl">
+          <TabsList className={`grid w-full ${currentAdmin?.isSuperAdmin ? 'grid-cols-4' : 'grid-cols-3'} max-w-2xl`}>
             <TabsTrigger value="users">
               <Users className="w-4 h-4 mr-2" />
               Benutzer
@@ -607,6 +686,12 @@ export default function AdminClient() {
               <Send className="w-4 h-4 mr-2" />
               Überweisungen
             </TabsTrigger>
+            {currentAdmin?.isSuperAdmin && (
+              <TabsTrigger value="admins" className="text-amber-600">
+                <Crown className="w-4 h-4 mr-2" />
+                Administratoren
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="users" className="space-y-6">
@@ -635,6 +720,7 @@ export default function AdminClient() {
                 <UsersTable
                   users={users}
                   loading={loading}
+                  isSuperAdmin={currentAdmin?.isSuperAdmin}
                   onEditBalance={handleEditBalance}
                   onEditPassword={handleEditPassword}
                   onEditProfile={handleEditProfile}
@@ -643,6 +729,7 @@ export default function AdminClient() {
                   onDeleteUser={handleDeleteUser}
                   onLoginAsUser={handleLoginAsUser}
                   onAddDeposit={handleOpenDeposit}
+                  onAssignUser={currentAdmin?.isSuperAdmin ? handleOpenAssignDialog : undefined}
                 />
 
                 {/* Pagination */}
@@ -777,6 +864,12 @@ export default function AdminClient() {
           <TabsContent value="transfers">
             <AdminTransfers />
           </TabsContent>
+
+          {currentAdmin?.isSuperAdmin && (
+            <TabsContent value="admins">
+              <AdminsManagement currentAdminId={currentAdmin.id} />
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Balance Edit Dialog */}
@@ -1258,6 +1351,73 @@ export default function AdminClient() {
                 className="bg-amber-500 hover:bg-amber-600 text-black"
               >
                 {closingTradeLoading ? 'Schließen...' : 'Handel schließen'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign User to Admin Dialog (SUPER_ADMIN only) */}
+        <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Benutzer zuweisen</DialogTitle>
+              <DialogDescription>
+                Weisen Sie <strong>{assigningUser?.email}</strong> einem Administrator zu
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Administrator auswählen</Label>
+                <Select value={selectedAdminId} onValueChange={setSelectedAdminId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Administrator auswählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">
+                      <span className="text-gray-500">Keine Zuweisung</span>
+                    </SelectItem>
+                    {adminsForAssign.map((admin) => {
+                      const icon = getAdminIcon(admin.adminIcon);
+                      return (
+                        <SelectItem key={admin.id} value={admin.id}>
+                          <div className="flex items-center gap-2">
+                            {icon && <span>{icon.emoji}</span>}
+                            <span>{admin.name || admin.email}</span>
+                            {admin.role === 'SUPER_ADMIN' && (
+                              <span className="text-xs text-amber-600">(Hauptadmin)</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {assigningUser?.assignedAdmin && (
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">Aktuell zugewiesen an:</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {getAdminIcon(assigningUser.assignedAdmin.adminIcon)?.emoji && (
+                      <span>{getAdminIcon(assigningUser.assignedAdmin.adminIcon)?.emoji}</span>
+                    )}
+                    <span className="font-medium">
+                      {assigningUser.assignedAdmin.name || assigningUser.assignedAdmin.email}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+                Abbrechen
+              </Button>
+              <Button
+                onClick={handleAssignUser}
+                disabled={assignLoading}
+                className="bg-amber-500 hover:bg-amber-600 text-black"
+              >
+                {assignLoading ? 'Zuweisen...' : 'Zuweisen'}
               </Button>
             </DialogFooter>
           </DialogContent>

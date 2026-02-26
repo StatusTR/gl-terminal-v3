@@ -9,20 +9,27 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
+    // Get current user with role
+    const currentUser = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
     // Check if user is admin
-    if (session.user.role !== 'ADMIN') {
+    if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN')) {
       return NextResponse.json(
         { error: 'Forbidden - Admin access required' },
         { status: 403 }
       );
     }
+
+    const isSuperAdmin = currentUser.role === 'SUPER_ADMIN';
 
     // Paginierungsparameter aus URL abrufen
     const { searchParams } = new URL(request.url);
@@ -33,15 +40,29 @@ export async function GET(request: NextRequest) {
     // Offset berechnen
     const skip = (page - 1) * limit;
 
-    // Suchbedingungen
+    // Suchbedingungen - ADMIN sees only their assigned clients, SUPER_ADMIN sees all
+    const baseWhere: any = {
+      role: 'USER' // Only show regular users, not admins
+    };
+
+    // Regular ADMIN only sees their assigned clients
+    if (!isSuperAdmin) {
+      baseWhere.assignedAdminId = currentUser.id;
+    }
+
     const where = search
       ? {
-          OR: [
-            { email: { contains: search, mode: 'insensitive' as const } },
-            { name: { contains: search, mode: 'insensitive' as const } },
-          ],
+          AND: [
+            baseWhere,
+            {
+              OR: [
+                { email: { contains: search, mode: 'insensitive' as const } },
+                { name: { contains: search, mode: 'insensitive' as const } },
+              ],
+            }
+          ]
         }
-      : {};
+      : baseWhere;
 
     // Gesamtzahl der Benutzer abrufen
     const totalUsers = await prisma.user.count({ where });
@@ -62,6 +83,15 @@ export async function GET(request: NextRequest) {
         bic: true,
         bankAddress: true,
         walletAddress: true,
+        assignedAdminId: true,
+        assignedAdmin: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            adminIcon: true
+          }
+        },
         createdAt: true,
         balances: {
           select: {
@@ -85,6 +115,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       users,
+      currentAdmin: {
+        id: currentUser.id,
+        role: currentUser.role,
+        isSuperAdmin
+      },
       pagination: {
         page,
         limit,

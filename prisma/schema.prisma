@@ -12,6 +12,7 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  SUPER_ADMIN
 }
 
 enum TransferType {
@@ -39,6 +40,12 @@ model User {
   phone         String?
   role          Role          @default(USER)
   
+  // Admin fields
+  adminIcon     String?       // Icon identifier for admin (e.g., "dollar", "bitcoin", etc.)
+  assignedAdminId String?     // For USER: which admin manages this client
+  assignedAdmin User?         @relation("AdminClients", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  managedClients User[]       @relation("AdminClients")
+  
   accountNumber String?
   recipientName String?
   iban          String?
@@ -56,6 +63,8 @@ model User {
   trades        Trade[]
   accounts      Account[]
   sessions      Session[]
+
+  @@index([assignedAdminId])
 }
 
 model Balance {
